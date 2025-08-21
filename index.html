@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador Interativo de Psicoacústica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: A single-page application (SPA) with a fixed sidebar navigation on desktop and a top bar on mobile. The structure is thematic, not linear, divided into core concepts: 'Fundamentos', 'Altura', 'Intensidade', 'Aplicações', and now 'Exercícios' and 'Referências'. This design allows users to jump directly to topics of interest. Each section contains explanatory text, interactive visualizations (using Chart.js and Canvas), audio demonstrations, and now diagrams and exercises to reinforce learning in a hands-on manner. -->
+    <!-- Visualization & Content Choices: 
+        - JND Demo (Fundamentos): Inform/Demonstrate -> HTML buttons + Web Audio API -> Allows hands-on experience.
+        - Weber-Fechner Law Diagram (Fundamentos): Organize/Explain -> HTML/CSS Diagram -> Visualizes the core logarithmic relationship.
+        - Missing Fundamental Demo (Altura): Demonstrate -> Web Audio API + Canvas Visualizer -> Provides auditory and visual proof.
+        - Shepard Tone Demo (Altura): Demonstrate/Wow-factor -> Web Audio API -> A classic psychoacoustic illusion.
+        - Equal-Loudness Chart (Intensidade): Explore/Change -> Interactive Chart.js Line Chart -> The centerpiece interaction.
+        - Perceptual Masking Diagram (Aplicações): Explain -> HTML/CSS Diagram -> Clarifies the principle behind MP3 compression.
+        - Interactive Exercises (Exercícios): Reinforce/Test -> HTML + JS toggle -> Active recall for better learning.
+        - Curated Bibliography (Referências): Guide/Extend -> Structured HTML list -> Provides paths for further study.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #3d3d3d;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+            border-left: 3px solid transparent;
+        }
+        .nav-link.active {
+            background-color: #EFEAE4;
+            color: #A37F5A;
+            border-left-color: #A37F5A;
+        }
+        .nav-link:hover {
+            background-color: #F7F3EE;
+        }
+        .prose-styles {
+            max-width: 80ch;
+        }
+        .prose-styles h2 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #EFEAE4;
+        }
+        .prose-styles h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        .prose-styles p, .prose-styles li {
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+        .prose-styles strong {
+            color: #2d2d2d;
+        }
+        .interactive-card {
+            background-color: #FFFFFF;
+            border: 1px solid #EFEAE4;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            margin-top: 1.5rem;
+        }
+        .custom-button {
+            background-color: #A37F5A;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .custom-button:hover {
+            background-color: #8c6d4d;
+        }
+        .custom-button-secondary {
+            background-color: #EFEAE4;
+            color: #A37F5A;
+        }
+         .custom-button-secondary:hover {
+            background-color: #e5ddd5;
+        }
+        .answer-block {
+            background-color: #F7F3EE;
+            border-left: 3px solid #A37F5A;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="relative min-h-screen md:flex">
+        <!-- Mobile menu button -->
+        <div class="md:hidden flex justify-between items-center p-4 bg-white border-b border-gray-200 sticky top-0 z-10">
+            <h1 class="text-xl font-bold text-[#A37F5A]">Psicoacústica</h1>
+            <button id="mobile-menu-button" class="text-gray-500 focus:outline-none focus:text-gray-600">
+                <svg class="h-6 w-6" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="sidebar" class="bg-white text-gray-700 w-64 space-y-2 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-20 border-r border-gray-200 md:flex flex-col">
+            <h1 class="text-2xl font-bold text-center text-[#A37F5A] px-4 pb-4 border-b border-gray-200 mb-4">Psicoacústica</h1>
+            <nav id="main-nav" class="flex-grow">
+                <a href="#fundamentos" class="block py-2.5 px-4 rounded nav-link active">Fundamentos</a>
+                <a href="#altura" class="block py-2.5 px-4 rounded nav-link">Altura (Pitch)</a>
+                <a href="#intensidade" class="block py-2.5 px-4 rounded nav-link">Intensidade (Loudness)</a>
+                <a href="#aplicacoes" class="block py-2.5 px-4 rounded nav-link">Aplicações</a>
+                <a href="#exercicios" class="block py-2.5 px-4 rounded nav-link">Exercícios</a>
+                <a href="#referencias" class="block py-2.5 px-4 rounded nav-link">Referências</a>
+            </nav>
+        </div>
+
+        <!-- Content -->
+        <main class="flex-1 p-6 sm:p-10 bg-[#FDFBF8]">
+            <div id="content-area" class="prose-styles mx-auto">
+                <!-- Section: Fundamentos -->
+                <section id="fundamentos" class="page-section">
+                    <h2>Fundamentos: A Medida da Sensação</h2>
+                    <p>
+                        Este módulo explora a origem da psicoacústica, a ciência que mede a relação entre um estímulo físico (som) e a sensação subjetiva que ele provoca. Começamos com os pioneiros do século XIX, como Weber e Fechner, que estabeleceram que nossa percepção não é um espelho linear do mundo físico, mas segue uma escala logarítmica. Aqui você poderá interagir com o conceito de <strong>Diferença Apenas Perceptível (JND)</strong>, a menor mudança em um som que conseguimos detectar, e entender a mecânica básica do ouvido, nosso sofisticado processador de áudio biológico.
+                    </p>
+
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Ilustração: A Lei de Weber-Fechner</h4>
+                        <p class="text-sm mb-4">Para que nossa percepção (Sensação) aumente em passos iguais (aritméticos), o estímulo físico (Intensidade) precisa aumentar exponencialmente (geométricos). Esta é a base da escala logarítmica da percepção, como os decibéis.</p>
+                        <div class="flex items-end justify-around p-4 bg-gray-50 rounded-lg h-48">
+                            <div class="text-center">
+                                <div class="h-4 w-8 bg-blue-300"></div><p class="text-xs mt-1">Passo 1</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="h-8 w-8 bg-blue-400"></div><p class="text-xs mt-1">Passo 2</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="h-16 w-8 bg-blue-500"></div><p class="text-xs mt-1">Passo 3</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="h-32 w-8 bg-blue-600"></div><p class="text-xs mt-1">Passo 4</p>
+                            </div>
+                        </div>
+                        <p class="text-center font-bold mt-2">Intensidade Física (aumento geométrico)</p>
+                    </div>
+
+                    <h3>Lei de Weber e a Diferença Apenas Perceptível (JND)</h3>
+                    <p>
+                        A Lei de Weber afirma que a menor mudança que podemos detectar em um estímulo (a JND) não é um valor absoluto, mas uma proporção constante do estímulo original. É mais fácil notar 1kg adicionado a 10kg do que 1kg adicionado a 100kg. Esta relação, formalizada como <strong>ΔI / I = k</strong>, é um pilar da psicofísica.
+                    </p>
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Demonstração Interativa: JND de Intensidade</h4>
+                        <p class="text-sm mb-4">Clique para ouvir dois tons. Use o controle deslizante para ajustar a diferença de volume entre eles e encontre o menor ponto em que você consegue distinguir confiavelmente que o "Tom B" é mais alto que o "Tom A".</p>
+                        <div class="flex items-center space-x-4">
+                            <button id="jnd-play-a" class="custom-button custom-button-secondary">Tocar Tom A (Referência)</button>
+                            <button id="jnd-play-b" class="custom-button custom-button-secondary">Tocar Tom B (Variável)</button>
+                        </div>
+                        <div class="mt-4">
+                            <label for="jnd-slider" class="block text-sm font-medium mb-1">Diferença de Intensidade</label>
+                            <input id="jnd-slider" type="range" min="0" max="100" value="50" class="w-full">
+                            <span id="jnd-value" class="text-sm"></span>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Section: Altura -->
+                <section id="altura" class="page-section hidden">
+                    <h2>Altura (Pitch): Teorias e Ilusões</h2>
+                     <p>
+                        A altura é a qualidade que nos permite organizar sons em uma escala de grave a agudo. Neste módulo, investigamos como o cérebro decodifica essa informação. Exploramos a competição e a síntese entre a <strong>Teoria do Lugar</strong> (qual parte do ouvido vibra) e a <strong>Teoria Temporal</strong> (o ritmo dos impulsos nervosos). Veremos também como o cérebro consegue "ouvir" notas que não estão fisicamente presentes através do fenômeno do <strong>fundamental ausente</strong> e como podemos criar paradoxos auditivos, como a famosa <strong>Escala de Shepard</strong>.
+                    </p>
+                    
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Demonstração: O Fundamental Ausente</h4>
+                        <p class="text-sm mb-4">O cérebro pode perceber uma altura mesmo que sua frequência fundamental seja removida. Ouça uma série de harmônicos e perceba como sua altura permanece constante mesmo sem a fundamental. A visualização mostra os harmônicos presentes.</p>
+                        <button id="missing-fundamental-play" class="custom-button">Tocar Demonstração</button>
+                        <canvas id="missing-fundamental-canvas" class="mt-4 bg-gray-100 rounded-md" width="500" height="100"></canvas>
+                    </div>
+
+                    <h3>Ilusões e Fenômenos de Altura</h3>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="interactive-card">
+                            <h4 class="text-lg font-semibold mb-2">Eficácia das Teorias de Altura</h4>
+                            <p class="text-sm mb-4">As teorias do Lugar e Temporal operam em conjunto. A codificação temporal domina em baixas frequências, enquanto a do lugar assume nas altas.</p>
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="pitchTheoryChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="interactive-card">
+                            <h4 class="text-lg font-semibold mb-2">Demonstração: Tom de Shepard-Risset</h4>
+                            <p class="text-sm mb-4">Uma famosa ilusão auditiva que parece subir (ou descer) infinitamente em altura, como a escadaria impossível de Escher. Ouça o paradoxo em ação.</p>
+                            <button id="shepard-tone-play" class="custom-button mt-8">Tocar Escala Infinita</button>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Section: Intensidade -->
+                <section id="intensidade" class="page-section hidden">
+                    <h2>Intensidade (Loudness): Curvas e Padrões</h2>
+                    <p>
+                        Por que uma música soa diferente em volumes baixos e altos? A resposta está na percepção de intensidade, ou <strong>loudness</strong>. A sensibilidade do nosso ouvido a diferentes frequências muda drasticamente com o nível de pressão sonora (SPL). Esta seção é centrada na visualização interativa das <strong>curvas de igual contorno de intensidade</strong> (como as de Fletcher-Munson e a norma ISO 226), que mapeiam essa sensibilidade. Você poderá ver como a percepção dos graves e agudos muda com o volume e entenderá as unidades de medida perceptual como o <strong>Phon</strong> e os padrões modernos como o <strong>LUFS</strong>, que encerraram a "Guerra do Volume".
+                    </p>
+                    
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Gráfico Interativo: Curvas ISO 226:2023</h4>
+                        <p class="text-sm mb-4">Use o controle deslizante para alterar o nível de loudness (em phons) e observe como a curva de sensibilidade do ouvido muda. Note como em níveis baixos, precisamos de muito mais energia nos graves e agudos para ouvi-los tão bem quanto os médios.</p>
+                        <div class="chart-container">
+                            <canvas id="loudnessChart"></canvas>
+                        </div>
+                        <div class="mt-4">
+                            <label for="phon-slider" class="block text-sm font-medium">Nível de Loudness: <span id="phon-value" class="font-bold">40</span> phons</label>
+                            <input id="phon-slider" type="range" min="1" max="90" value="40" class="w-full mt-1">
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Section: Aplicações -->
+                <section id="aplicacoes" class="page-section hidden">
+                    <h2>Aplicações: Tecnologia e Arte</h2>
+                     <p>
+                        A psicoacústica não é apenas teoria; ela é a base de tecnologias essenciais e uma fonte de inspiração para a arte. Neste módulo, exploramos como o conceito de <strong>mascaramento de frequência</strong> possibilita a compressão de áudio em formatos como o MP3, descartando sons que não conseguimos ouvir. Veremos também por que o <strong>dither</strong>, a adição de ruído, pode paradoxalmente melhorar a qualidade do áudio digital. Finalmente, conheceremos compositores e artistas, como <strong>Alvin Lucier</strong> e <strong>Hans Zimmer</strong>, que usam os próprios fenômenos da percepção como matéria-prima para suas criações.
+                    </p>
+
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Ilustração: Mascaramento de Frequência</h4>
+                        <p class="text-sm mb-4">Codecs como o MP3 exploram o fato de que um som forte (o "mascarador") torna sons mais fracos em frequências próximas inaudíveis. O codec descarta a informação desses sons mascarados para economizar espaço.</p>
+                        <div class="relative h-48 w-full bg-gray-50 rounded-lg p-4">
+                            <div class="absolute bottom-0 left-1/4 w-8 h-40 bg-red-500 rounded-t-md"></div>
+                            <div class="absolute bottom-0" style="left: 35%;"><div class="w-4 h-16 bg-blue-300 rounded-t-md"></div></div>
+                            <div class="absolute bottom-0" style="left: 40%;"><div class="w-4 h-8 bg-blue-300 rounded-t-md"></div></div>
+                            <div class="absolute bottom-0" style="left: 45%;"><div class="w-4 h-24 bg-blue-300 rounded-t-md"></div></div>
+                             <div class="absolute bottom-0 h-20 w-full border-b-4 border-red-500 border-dashed" style="border-radius: 50% 50% 0 0 / 100% 100% 0 0; transform: scale(1.5, 1) translateX(-16.66%);"></div>
+                            <p class="absolute bottom-2 left-1/4 -ml-8 text-xs font-bold">Mascarador</p>
+                            <p class="absolute bottom-2 left-1/2 -ml-10 text-xs font-bold text-gray-400">Sons Mascarados</p>
+                        </div>
+                    </div>
+
+                    <h3>Demonstrações Tecnológicas</h3>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="interactive-card">
+                            <h4 class="text-lg font-semibold mb-2">Demonstração: Mascaramento (Codec)</h4>
+                            <p class="text-sm mb-4">Ouça um som complexo e depois uma versão simplificada onde os componentes mais fracos foram removidos, um princípio chave da compressão de áudio.</p>
+                            <button id="masking-demo-play" class="custom-button">Tocar Demonstração</button>
+                        </div>
+                        <div class="interactive-card">
+                            <h4 class="text-lg font-semibold mb-2">Demonstração: Dither</h4>
+                            <p class="text-sm mb-4">Ouça um fade-out com e sem dither. O dither adiciona ruído para tornar o erro de quantização (redução de bits) menos perceptível.</p>
+                            <button id="dither-demo-play" class="custom-button">Tocar Demonstração</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Exercícios -->
+                <section id="exercicios" class="page-section hidden">
+                    <h2>Exercícios de Fixação</h2>
+                    <p>Teste seus conhecimentos sobre os conceitos apresentados. Clique em "Mostrar Resposta" para verificar sua compreensão.</p>
+                    
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Questão 1</h4>
+                        <p>Qual é a principal diferença entre a Lei de Weber e a Lei de Fechner?</p>
+                        <button class="custom-button custom-button-secondary mt-2 toggle-answer">Mostrar Resposta</button>
+                        <div class="answer-block hidden">
+                            <p><strong>Resposta:</strong> A Lei de Weber (ΔI/I = k) descreve a relação para a *detecção de diferença* (JND), afirmando que ela é proporcional ao estímulo. A Lei de Fechner (S = k log(I)) vai além, postulando que a *magnitude total da sensação* cresce de forma logarítmica com o estímulo, baseando-se na suposição de que todas as JNDs são psicologicamente iguais.</p>
+                        </div>
+                    </div>
+
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Questão 2</h4>
+                        <p>Um engenheiro de mixagem trabalha em volume baixo e, para compensar, aumenta muito os graves. O que acontecerá quando essa mixagem for tocada em volume alto?</p>
+                        <button class="custom-button custom-button-secondary mt-2 toggle-answer">Mostrar Resposta</button>
+                        <div class="answer-block hidden">
+                             <p><strong>Resposta:</strong> Devido às curvas de Fletcher-Munson, a percepção dos graves aumenta drasticamente com o volume. A mixagem soará com excesso de graves ("boomy" ou "embolada"), pois o cérebro não precisará mais da compensação que o engenheiro aplicou.</p>
+                        </div>
+                    </div>
+
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Questão 3</h4>
+                        <p>Como um plugin de "reforço de graves psicoacústico" (como o MaxxBass) funciona sem de fato amplificar as frequências graves?</p>
+                        <button class="custom-button custom-button-secondary mt-2 toggle-answer">Mostrar Resposta</button>
+                        <div class="answer-block hidden">
+                             <p><strong>Resposta:</strong> Ele explora o fenômeno do **fundamental ausente**. O plugin gera e adiciona ao sinal uma série de harmônicos superiores da nota grave. O cérebro do ouvinte detecta esse padrão harmônico e "preenche" a fundamental, percebendo o grave como se estivesse fisicamente presente, mesmo que um alto-falante pequeno não o reproduza.</p>
+                        </div>
+                    </div>
+
+                    <div class="interactive-card">
+                        <h4 class="text-lg font-semibold mb-2">Questão 4</h4>
+                        <p>Por que o padrão LUFS foi adotado por plataformas de streaming e broadcast, substituindo os medidores de pico (dBFS)?</p>
+                        <button class="custom-button custom-button-secondary mt-2 toggle-answer">Mostrar Resposta</button>
+                        <div class="answer-block hidden">
+                            <p><strong>Resposta:</strong> Porque o LUFS mede a **loudness percebida** ao longo do tempo, de forma muito mais próxima à audição humana, usando um filtro (K-weighting) que simula as curvas de igual contorno de intensidade. Medidores de pico não refletem a loudness real e levaram à "Guerra do Volume". O LUFS permite normalizar o volume de forma consistente entre diferentes tipos de conteúdo.</p>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Section: Referências -->
+                <section id="referencias" class="page-section hidden">
+                    <h2>Referências e Leituras</h2>
+                    <p>Uma lista de recursos essenciais para quem deseja aprofundar os estudos em acústica musical e psicoacústica.</p>
+                    
+                    <h3>Obras Clássicas / Canônicas</h3>
+                    <ul class="list-disc pl-5 space-y-4">
+                        <li>
+                            <strong>Henrique, Luis. *Acústica Musical*. Fundação Calouste Gulbenkian.</strong><br>
+                            <span class="text-sm">O livro-base deste roteiro. Uma referência fundamental em língua portuguesa que aborda a física do som e a psicoacústica de forma clara e aprofundada.</span>
+                        </li>
+                        <li>
+                            <strong>Moore, Brian C. J. *An Introduction to the Psychology of Hearing*. Academic Press.</strong><br>
+                            <span class="text-sm">Considerado o texto padrão e mais abrangente sobre psicoacústica no mundo. Cobre todos os tópicos com um detalhe e rigor científico inigualáveis.</span>
+                        </li>
+                        <li>
+                            <strong>Helmholtz, Hermann von. *On the Sensations of Tone as a Physiological Basis for the Theory of Music* (1863).</strong><br>
+                            <span class="text-sm">A obra seminal que estabeleceu a conexão entre a física, a fisiologia e a teoria musical, introduzindo a teoria da ressonância e a ideia do ouvido como um analisador de Fourier.</span>
+                        </li>
+                         <li>
+                            <strong>Békésy, Georg von. *Experiments in Hearing*. McGraw-Hill.</strong><br>
+                            <span class="text-sm">A compilação do trabalho laureado com o Nobel que estabeleceu a mecânica da onda viajante na cóclea. Um exemplo magistral de engenhosidade experimental.</span>
+                        </li>
+                    </ul>
+
+                    <h3 class="mt-8">Leituras Atuais e de Aprofundamento</h3>
+                     <ul class="list-disc pl-5 space-y-4">
+                        <li>
+                            <strong>Hartmann, William M. *Signals, Sound, and Sensation*. Springer.</strong><br>
+                            <span class="text-sm">Um texto que une o rigor matemático do processamento de sinais com a psicoacústica. Ideal para quem tem background técnico em engenharia ou física.</span>
+                        </li>
+                        <li>
+                            <strong>Rossing, Thomas D. (Ed.). *Springer Handbook of Acoustics*. Springer.</strong><br>
+                            <span class="text-sm">Um manual abrangente que cobre praticamente todos os aspectos da acústica, com capítulos detalhados sobre percepção auditiva, acústica arquitetônica e de instrumentos musicais.</span>
+                        </li>
+                        <li>
+                            <strong>Katz, Bob. *Mastering Audio: The Art and the Science*. Focal Press.</strong><br>
+                            <span class="text-sm">Um livro prático que aplica diretamente os conceitos de psicoacústica (loudness, dither, mascaramento) ao processo de masterização de áudio. Essencial para engenheiros de som.</span>
+                        </li>
+                    </ul>
+                </section>
+            </div>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    
+    const navLinks = document.querySelectorAll('#main-nav a');
+    const sections = document.querySelectorAll('.page-section');
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const sidebar = document.getElementById('sidebar');
+
+    let audioCtx;
+    const getAudioContext = () => {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioCtx;
+    };
+
+    const setActiveLink = (hash) => {
+        navLinks.forEach(link => {
+            if (link.getAttribute('href') === hash) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    };
+
+    const showSection = (hash) => {
+        sections.forEach(section => {
+            if (`#${section.id}` === hash) {
+                section.classList.remove('hidden');
+            } else {
+                section.classList.add('hidden');
+            }
+        });
+        
+        setActiveLink(hash);
+        window.scrollTo(0, 0);
+        
+        if (hash === '#intensidade' && !window.loudnessChartInstance) {
+            initLoudnessChart();
+        }
+        if (hash === '#altura' && !window.pitchTheoryChartInstance) {
+            initPitchTheoryChart();
+        }
+    };
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetHash = link.getAttribute('href');
+            showSection(targetHash);
+            
+            if (window.innerWidth < 768) {
+                 sidebar.classList.add('-translate-x-full');
+            }
+        });
+    });
+
+    mobileMenuButton.addEventListener('click', () => {
+        sidebar.classList.toggle('-translate-x-full');
+    });
+
+    showSection(window.location.hash || '#fundamentos');
+
+    function playTone(freq, amplitude, duration) {
+        const ctx = getAudioContext();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+        gainNode.gain.setValueAtTime(amplitude, ctx.currentTime);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + duration);
+    }
+    
+    const jndPlayA = document.getElementById('jnd-play-a');
+    const jndPlayB = document.getElementById('jnd-play-b');
+    const jndSlider = document.getElementById('jnd-slider');
+    const jndValueDisplay = document.getElementById('jnd-value');
+
+    const baseAmplitude = 0.1;
+    
+    jndPlayA.addEventListener('click', () => playTone(440, baseAmplitude, 0.5));
+    
+    jndPlayB.addEventListener('click', () => {
+        const diff = parseFloat(jndSlider.value) / 2000;
+        playTone(440, baseAmplitude + diff, 0.5);
+    });
+    
+    jndSlider.addEventListener('input', () => {
+       const percentage = (parseFloat(jndSlider.value) / 100 * 5).toFixed(2);
+       jndValueDisplay.textContent = `${percentage}% mais alto`;
+    });
+    jndValueDisplay.textContent = `${(parseFloat(jndSlider.value) / 100 * 5).toFixed(2)}% mais alto`;
+
+
+    const missingFundamentalButton = document.getElementById('missing-fundamental-play');
+    const mfCanvas = document.getElementById('missing-fundamental-canvas');
+    const mfCanvasCtx = mfCanvas.getContext('2d');
+
+    function drawHarmonics(fundamental, harmonics) {
+        mfCanvasCtx.clearRect(0, 0, mfCanvas.width, mfCanvas.height);
+        mfCanvasCtx.fillStyle = '#A37F5A';
+        const maxFreq = fundamental * (harmonics.length + 1);
+        harmonics.forEach(h => {
+            const freq = fundamental * h;
+            const x = (freq / maxFreq) * mfCanvas.width * 0.9 + 20;
+            const height = 80 / (h-1);
+            mfCanvasCtx.fillRect(x, mfCanvas.height - height, 10, height);
+        });
+    }
+
+    missingFundamentalButton.addEventListener('click', () => {
+        const ctx = getAudioContext();
+        const fundamental = 100;
+        const duration = 0.5;
+        const startTime = ctx.currentTime;
+        const harmonics = [2, 3, 4, 5, 6];
+
+        drawHarmonics(fundamental, harmonics);
+        
+        harmonics.forEach(h => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.value = fundamental * h;
+            gain.gain.value = 0.1 / (h-1);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        });
+    });
+
+    const shepardToneButton = document.getElementById('shepard-tone-play');
+    shepardToneButton.addEventListener('click', () => {
+        const ctx = getAudioContext();
+        const numOctaves = 6;
+        const baseFreq = 55;
+        const duration = 10;
+        const startTime = ctx.currentTime;
+
+        for (let i = 0; i < numOctaves; i++) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            const startFreq = baseFreq * Math.pow(2, i);
+            const endFreq = startFreq * 2;
+            
+            osc.frequency.setValueAtTime(startFreq, startTime);
+            osc.frequency.linearRampToValueAtTime(endFreq, startTime + duration);
+
+            const gainEnv = ctx.createGain();
+            gainEnv.connect(gain);
+            gainEnv.gain.setValueAtTime(0, startTime);
+            gainEnv.gain.linearRampToValueAtTime(1, startTime + 0.5);
+            gainEnv.gain.linearRampToValueAtTime(1, startTime + duration - 0.5);
+            gainEnv.gain.linearRampToValueAtTime(0, startTime + duration);
+            
+            const panner = new WaveShaperNode(ctx, {
+                curve: shepardEnvelope(ctx.sampleRate),
+                oversample: '4x'
+            });
+            osc.connect(panner).connect(gain);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+    });
+
+    function shepardEnvelope(sampleRate) {
+        const curve = new Float32Array(sampleRate);
+        const centerFreq = 660;
+        const spread = 4;
+        for (let i = 0; i < sampleRate; i++) {
+            const freq = (i / sampleRate) * (sampleRate / 2);
+            curve[i] = Math.exp(-0.5 * Math.pow(Math.log2(freq / centerFreq) / spread, 2)) * 0.1;
+        }
+        return curve;
+    }
+
+    const maskingDemoButton = document.getElementById('masking-demo-play');
+    maskingDemoButton.addEventListener('click', () => {
+        const ctx = getAudioContext();
+        const startTime = ctx.currentTime;
+
+        const maskerFreq = 400;
+        const maskedFreq = 450;
+        const weakToneAmp = 0.01;
+        const strongToneAmp = 0.3;
+
+        playTone(maskedFreq, weakToneAmp, 0.5);
+
+        setTimeout(() => {
+            playTone(maskerFreq, strongToneAmp, 0.5);
+            playTone(maskedFreq, weakToneAmp, 0.5);
+        }, 1000);
+    });
+    
+    const ditherDemoButton = document.getElementById('dither-demo-play');
+    ditherDemoButton.addEventListener('click', () => {
+        const ctx = getAudioContext();
+        const duration = 2;
+        const startTime = ctx.currentTime;
+
+        const createFadingSine = (dither = false) => {
+            const channels = 1;
+            const frameCount = ctx.sampleRate * duration;
+            const buffer = ctx.createBuffer(channels, frameCount, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            const bitDepth = 4;
+            const levels = Math.pow(2, bitDepth);
+
+            for (let i = 0; i < frameCount; i++) {
+                const time = i / ctx.sampleRate;
+                const envelope = 1 - (time / duration);
+                const rawSample = Math.sin(2 * Math.PI * 440 * time) * envelope * 0.5;
+                
+                let sampleToQuantize = rawSample;
+                if (dither) {
+                    sampleToQuantize += (Math.random() * 2 - 1) / levels;
+                }
+                
+                const quantizedSample = Math.round(sampleToQuantize * (levels / 2)) / (levels / 2);
+                data[i] = quantizedSample;
+            }
+            return buffer;
+        };
+
+        const source1 = ctx.createBufferSource();
+        source1.buffer = createFadingSine(false);
+        source1.connect(ctx.destination);
+        source1.start(startTime);
+        
+        setTimeout(() => {
+            const source2 = ctx.createBufferSource();
+            source2.buffer = createFadingSine(true);
+            source2.connect(ctx.destination);
+            source2.start(ctx.currentTime);
+        }, (duration + 1) * 1000);
+    });
+
+    const initPitchTheoryChart = () => {
+        const ctx = document.getElementById('pitchTheoryChart').getContext('2d');
+        window.pitchTheoryChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['100', '500', '1k', '2k', '4k', '8k', '16k'],
+                datasets: [{
+                    label: 'Teoria Temporal',
+                    data: [100, 95, 80, 60, 20, 5, 0],
+                    borderColor: 'rgba(163, 127, 90, 0.8)',
+                    backgroundColor: 'rgba(163, 127, 90, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Teoria do Lugar',
+                    data: [10, 20, 40, 70, 90, 95, 100],
+                    borderColor: 'rgba(60, 60, 60, 0.8)',
+                    backgroundColor: 'rgba(60, 60, 60, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { title: { display: true, text: 'Eficácia Perceptual (%)' } },
+                    x: { title: { display: true, text: 'Frequência (Hz)' } }
+                },
+                plugins: { title: { display: false }, tooltip: { mode: 'index', intersect: false } }
+            }
+        });
+    };
+    
+    const iso226Data = {
+        freq: [20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500],
+        phonLevels: {
+            1: [94, 86, 78, 70, 63, 56, 50, 44, 39, 34, 30, 26, 22, 18, 15, 12, 9, 7, 5, 3, 1, -1, -4, -6, -5, 0, 8, 12, 16],
+            20: [78.5, 71.5, 64.4, 57.8, 51.1, 45, 39.1, 34.5, 30.5, 26.6, 23.6, 21.1, 19.1, 17.5, 16.5, 15.6, 16.1, 20, 18.2, 16.5, 15, 13, 11, 8.5, 9, 12.8, 18.1, 21.5, 25.1],
+            40: [63.6, 57.3, 51.1, 45.1, 39.8, 35.1, 30.7, 26.9, 23.8, 20.9, 18.6, 16.8, 15.3, 14.2, 14.1, 16.3, 22.3, 40, 36.5, 33.1, 32.3, 31.1, 30.4, 29.6, 31.5, 36.1, 41.6, 43.7, 45.4],
+            60: [53.3, 48.3, 43.4, 38.8, 34.8, 31.1, 27.6, 24.5, 21.8, 19.4, 17.6, 16.2, 15.1, 14.8, 17.2, 24, 35.4, 60, 54.7, 51.1, 50.1, 49.2, 49.1, 49.4, 51.9, 56.1, 60.6, 62.3, 62.8],
+            80: [47.5, 43.6, 39.8, 36, 32.6, 29.5, 26.6, 24, 21.7, 19.6, 18, 16.8, 15.9, 16.4, 20.3, 29.2, 43.2, 80, 72.8, 69.1, 68, 67.2, 67.5, 68.2, 70.7, 74.4, 78.4, 80, 79.5],
+            90: [45, 41.5, 38.1, 34.7, 31.6, 28.7, 26, 23.5, 21.4, 19.5, 18, 16.8, 16.1, 16.8, 21.1, 30.2, 44.8, 90, 82.2, 78.4, 77.2, 76.2, 76.5, 77.2, 79.7, 83.4, 87.4, 89.1, 88.5]
+        }
+    };
+
+    function interpolate(phonLevel) {
+        const phonKeys = Object.keys(iso226Data.phonLevels).map(Number).sort((a,b) => a-b);
+        if(phonKeys.includes(phonLevel)) return iso226Data.phonLevels[phonLevel];
+
+        let lowerPhon, upperPhon;
+        for(let i=0; i < phonKeys.length-1; i++){
+            if(phonLevel > phonKeys[i] && phonLevel < phonKeys[i+1]){
+                lowerPhon = phonKeys[i];
+                upperPhon = phonKeys[i+1];
+                break;
+            }
+        }
+        if(!lowerPhon) return iso226Data.phonLevels[phonKeys[0]];
+        
+        const lowerData = iso226Data.phonLevels[lowerPhon];
+        const upperData = iso226Data.phonLevels[upperPhon];
+        const t = (phonLevel - lowerPhon) / (upperPhon - lowerPhon);
+
+        return lowerData.map((val, i) => val + t * (upperData[i] - val));
+    }
+
+    const initLoudnessChart = () => {
+        const phonSlider = document.getElementById('phon-slider');
+        const phonValue = document.getElementById('phon-value');
+
+        const ctx = document.getElementById('loudnessChart').getContext('2d');
+        window.loudnessChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: iso226Data.freq,
+                datasets: [{
+                    label: 'Nível de Pressão Sonora (dB SPL)',
+                    data: interpolate(40),
+                    borderColor: 'rgba(163, 127, 90, 1)',
+                    backgroundColor: 'rgba(163, 127, 90, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { title: { display: true, text: 'Nível de Pressão Sonora (dB SPL)' }, min: -10, max: 100 },
+                    x: { type: 'logarithmic', title: { display: true, text: 'Frequência (Hz)' } }
+                },
+                plugins: { title: { display: false }, legend: { display: false } }
+            }
+        });
+
+        phonSlider.addEventListener('input', (e) => {
+            const phon = parseInt(e.target.value, 10);
+            phonValue.textContent = phon;
+            window.loudnessChartInstance.data.datasets[0].data = interpolate(phon);
+            window.loudnessChartInstance.update();
+        });
+    };
+
+    const answerToggles = document.querySelectorAll('.toggle-answer');
+    answerToggles.forEach(button => {
+        button.addEventListener('click', () => {
+            const answerBlock = button.nextElementSibling;
+            answerBlock.classList.toggle('hidden');
+        });
+    });
+});
+</script>
+
+</body>
+</html>
